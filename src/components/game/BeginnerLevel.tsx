@@ -8,12 +8,6 @@ interface BeginnerLevelProps {
   onLevelComplete: () => void;
 }
 
-interface DragElement {
-  id: string;
-  type: 'circle' | 'square';
-  color: string;
-}
-
 const BeginnerLevel: React.FC<BeginnerLevelProps> = ({ onLevelComplete }) => {
   const { translate } = useLanguage();
   const { setIsPlaying, addToProgress, loseLife, lives } = useGame();
@@ -22,11 +16,9 @@ const BeginnerLevel: React.FC<BeginnerLevelProps> = ({ onLevelComplete }) => {
   const [gameStarted, setGameStarted] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [group1, setGroup1] = useState<DragElement[]>([]);
-  const [group2, setGroup2] = useState<DragElement[]>([]);
+  const [group1, setGroup1] = useState<string[]>([]);
+  const [group2, setGroup2] = useState<string[]>([]);
   const [selectedChoice, setSelectedChoice] = useState<'even' | 'odd' | null>(null);
-  const [availableElements, setAvailableElements] = useState<DragElement[]>([]);
-  const [draggedElement, setDraggedElement] = useState<DragElement | null>(null);
 
   useEffect(() => {
     if (gameStarted) {
@@ -34,18 +26,6 @@ const BeginnerLevel: React.FC<BeginnerLevelProps> = ({ onLevelComplete }) => {
       generateNewNumber();
     }
   }, [gameStarted]);
-
-  const generateElements = (number: number): DragElement[] => {
-    const elements: DragElement[] = [];
-    for (let i = 0; i < number; i++) {
-      elements.push({
-        id: `element-${i}`,
-        type: i % 2 === 0 ? 'circle' : 'square',
-        color: '#3B82F6'
-      });
-    }
-    return elements;
-  };
 
   const generateNewNumber = () => {
     let newNumber;
@@ -60,53 +40,13 @@ const BeginnerLevel: React.FC<BeginnerLevelProps> = ({ onLevelComplete }) => {
     setGroup1([]);
     setGroup2([]);
     setSelectedChoice(null);
-    setAvailableElements(generateElements(newNumber));
   };
 
   const startGame = () => {
     setGameStarted(true);
   };
 
-  const handleDragStart = (e: React.DragEvent, element: DragElement) => {
-    setDraggedElement(element);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent, groupType: 'group1' | 'group2') => {
-    e.preventDefault();
-    if (!draggedElement) return;
-
-    // Remove element from available elements
-    setAvailableElements(prev => prev.filter(el => el.id !== draggedElement.id));
-
-    // Add element to the specified group
-    if (groupType === 'group1') {
-      setGroup1(prev => [...prev, draggedElement]);
-    } else {
-      setGroup2(prev => [...prev, draggedElement]);
-    }
-
-    setDraggedElement(null);
-  };
-
-  const handleElementClick = (element: DragElement) => {
-    // Remove from groups and return to available elements
-    setGroup1(prev => prev.filter(el => el.id !== element.id));
-    setGroup2(prev => prev.filter(el => el.id !== element.id));
-    setAvailableElements(prev => [...prev, element]);
-  };
-
   const handleChoice = (choice: 'even' | 'odd') => {
-    // Check if all elements are distributed
-    if (availableElements.length > 0) {
-      return; // Don't allow validation until all elements are placed
-    }
-
     setSelectedChoice(choice);
     const isEven = currentNumber % 2 === 0;
     const correct = (choice === 'even' && isEven) || (choice === 'odd' && !isEven);
@@ -120,10 +60,12 @@ const BeginnerLevel: React.FC<BeginnerLevelProps> = ({ onLevelComplete }) => {
     } else {
       const gameOver = loseLife();
       if (gameOver) {
+        // Handle game over
         setGameStarted(false);
       }
     }
 
+    // Auto advance after 2 seconds
     setTimeout(() => {
       if (correct || lives > 1) {
         generateNewNumber();
@@ -137,9 +79,7 @@ const BeginnerLevel: React.FC<BeginnerLevelProps> = ({ onLevelComplete }) => {
 
   const getButtonStyle = (choice: 'even' | 'odd') => {
     if (!showValidation || selectedChoice !== choice) {
-      return availableElements.length > 0 
-        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-        : 'bg-gray-400 text-white hover:bg-gray-500';
+      return 'bg-gray-400 text-white hover:bg-gray-500';
     }
     
     if (isCorrect) {
@@ -149,22 +89,6 @@ const BeginnerLevel: React.FC<BeginnerLevelProps> = ({ onLevelComplete }) => {
     }
     
     return 'bg-gray-400 text-white';
-  };
-
-  const renderElement = (element: DragElement, index?: number) => {
-    const baseClasses = "w-8 h-8 bg-blue-500 cursor-pointer transition-all duration-200 hover:scale-110 flex items-center justify-center text-white text-xs font-bold";
-    
-    return (
-      <div
-        key={element.id}
-        className={`${baseClasses} ${element.type === 'circle' ? 'rounded-full' : 'rounded-md'}`}
-        draggable
-        onDragStart={(e) => handleDragStart(e, element)}
-        onClick={() => handleElementClick(element)}
-      >
-        {index !== undefined && index + 1}
-      </div>
-    );
   };
 
   if (!gameStarted) {
@@ -203,63 +127,23 @@ const BeginnerLevel: React.FC<BeginnerLevelProps> = ({ onLevelComplete }) => {
         <VisualRod number={currentNumber} size="large" />
       </div>
 
-      {/* Available elements to drag */}
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-4 text-gray-700 text-center">
-          Trage elementele în grupe:
-        </h3>
-        <div className="flex justify-center">
-          <div className="flex flex-wrap gap-2 p-4 bg-gray-100 rounded-lg min-h-20 justify-center items-center">
-            {availableElements.map((element) => renderElement(element))}
-            {availableElements.length === 0 && (
-              <p className="text-gray-500 text-sm">Toate elementele au fost plasate în grupe</p>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Group areas */}
       <div className="grid grid-cols-2 gap-8 mb-8">
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-4 text-gray-700">
             {translate('group_1')}
           </h3>
-          <div 
-            className="min-h-32 border-2 border-dashed border-blue-300 rounded-lg p-4 bg-blue-50 transition-colors hover:border-blue-400 hover:bg-blue-100"
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, 'group1')}
-          >
-            <div className="flex flex-wrap gap-2 justify-center">
-              {group1.map((element, index) => renderElement(element, index))}
-              {group1.length === 0 && (
-                <p className="text-gray-400 text-sm">Plasează elementele aici</p>
-              )}
-            </div>
+          <div className="min-h-32 border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+            {/* Grouping visualization would go here */}
           </div>
-          <p className="text-sm text-gray-600 mt-2">
-            Elemente: {group1.length}
-          </p>
         </div>
-        
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-4 text-gray-700">
             {translate('group_2')}
           </h3>
-          <div 
-            className="min-h-32 border-2 border-dashed border-green-300 rounded-lg p-4 bg-green-50 transition-colors hover:border-green-400 hover:bg-green-100"
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, 'group2')}
-          >
-            <div className="flex flex-wrap gap-2 justify-center">
-              {group2.map((element, index) => renderElement(element, index))}
-              {group2.length === 0 && (
-                <p className="text-gray-400 text-sm">Plasează elementele aici</p>
-              )}
-            </div>
+          <div className="min-h-32 border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+            {/* Grouping visualization would go here */}
           </div>
-          <p className="text-sm text-gray-600 mt-2">
-            Elemente: {group2.length}
-          </p>
         </div>
       </div>
 
@@ -267,27 +151,19 @@ const BeginnerLevel: React.FC<BeginnerLevelProps> = ({ onLevelComplete }) => {
       <div className="flex justify-center gap-6">
         <button
           onClick={() => handleChoice('even')}
-          disabled={showValidation || availableElements.length > 0}
+          disabled={showValidation}
           className={`px-8 py-4 font-bold text-xl rounded-xl transition-all duration-300 ${getButtonStyle('even')}`}
         >
           {translate('even')}
         </button>
         <button
           onClick={() => handleChoice('odd')}
-          disabled={showValidation || availableElements.length > 0}
+          disabled={showValidation}
           className={`px-8 py-4 font-bold text-xl rounded-xl transition-all duration-300 ${getButtonStyle('odd')}`}
         >
           {translate('odd')}
         </button>
       </div>
-
-      {availableElements.length > 0 && (
-        <div className="text-center mt-4">
-          <p className="text-sm text-gray-500">
-            Plasează toate elementele în grupe pentru a putea răspunde
-          </p>
-        </div>
-      )}
 
       {/* Feedback message */}
       {showValidation && (
